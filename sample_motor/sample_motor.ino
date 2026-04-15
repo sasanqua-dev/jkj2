@@ -21,17 +21,57 @@ void setup() { // 実行時に1回だけ実行
   Serial.begin(9600);
 }
 
+void stopMotor() { // モータを停止させる関数
+  digitalWrite(motor_l1, LOW);
+  digitalWrite(motor_l2, LOW);
+  analogWrite(pwm_motor_l, 0);
+  digitalWrite(motor_r1, LOW);
+  digitalWrite(motor_r2, LOW);
+  analogWrite(pwm_motor_r, 0);
+}
+
+void forward(speedBase: int = 200) { // 前進させる関数
+  digitalWrite(motor_l1, HIGH);
+  digitalWrite(motor_l2, LOW);
+  analogWrite(pwm_motor_l, speedBase);
+  digitalWrite(motor_r1, HIGH);
+  digitalWrite(motor_r2, LOW);
+  analogWrite(pwm_motor_r, speedBase);
+}
+
+void backward(speedBase: int = 200) { // 後退させる関数
+  digitalWrite(motor_l1, LOW);
+  digitalWrite(motor_l2, HIGH);
+  analogWrite(pwm_motor_l, speedBase);
+  digitalWrite(motor_r1, LOW);
+  digitalWrite(motor_r2, HIGH);
+  analogWrite(pwm_motor_r, speedBase);
+}
+
+void turnLeft(speedBase: int = 200) { // 左に曲がる関数
+  digitalWrite(motor_l1, LOW);
+  digitalWrite(motor_l2, HIGH);
+  analogWrite(pwm_motor_l, speedBase + 25);
+  digitalWrite(motor_r1, HIGH);
+  digitalWrite(motor_r2, LOW);
+  analogWrite(pwm_motor_r, sppeedBase - 25);
+}
+
+void turnRight(speedBase: int = 200) { // 右に曲がる関数
+  digitalWrite(motor_l1, HIGH);
+  digitalWrite(motor_l2, LOW);
+  analogWrite(pwm_motor_l, speedBase - 25);
+  digitalWrite(motor_r1, LOW);
+  digitalWrite(motor_r2, HIGH);
+  analogWrite(pwm_motor_r, speedBase + 25);
+}
+
 void loop() { // 制御プログラム
   // センサの値をアナログ値で読み取る
   val = analogRead(sensor);
   // シリアルポートに読み取った値を表示させる
-  Serial.print(val); // 改行なし
-  // Serial.println(val); // 表示して改行
-  digitalWrite(motor_l1, HIGH); // motor_l1に対応するピン（4番）をHIGHにする
-  digitalWrite(motor_l2, LOW); // 上の行とセットでモータドライバのモードを決定
-  analogWrite(pwm_motor_l, 150); // モータの印加電圧を0～255で制御
-  digitalWrite(motor_r1, HIGH);
-  digitalWrite(motor_r2, LOW);
-  analogWrite(pwm_motor_r, 150);
+  Serial.println(val); // 表示して改行
+  // ここから制御分岐
+  forward();
   delay(20); // 0.02 秒待つ（動作を続ける）
 }
