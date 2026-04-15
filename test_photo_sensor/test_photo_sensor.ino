@@ -1,11 +1,13 @@
 void setup() {
   // put your setup code here, to run once:
-  pinMode(13, OUTPUT);
+  pinMode(11, OUTPUT);
+  pinMode(A1, OUTPUT);
   Serial.begin(9600);
 }
 
 void loop() {
-  digitalWrite(13, HIGH);   // LEDを点灯(HIGHは電圧レベルを5Vにする)    // LEDを消灯(LOWは電圧レベルを0Vにする)                   // 1秒間(1000ms)待つ
+  digitalWrite(11, HIGH);   // LEDを点灯(HIGHは電圧レベルを5Vにする)    // LEDを消灯(LOWは電圧レベルを0Vにする)                   // 1秒間(1000ms)待つ
   int val = analogRead(A0);
+  analogWrite(11, 150);
   Serial.println(val);
 }
