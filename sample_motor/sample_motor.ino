@@ -6,6 +6,8 @@ const int pwm_motor_r = 10; // PWM信号生成可能なピンを選ぶ
 const int motor_l1 = 4;
 const int motor_l2 = 5;
 const int pwm_motor_l = 11;
+
+int last_turn_flag = 0; // 1 = 右 2 = 左
 // フォトリフレクタ
 const int sensor = A3;
 // センサから読み取った値（analog）
@@ -54,19 +56,19 @@ void backward(int speedBase = 200) { // 後退させる関数
   analogWrite(pwm_motor_r, speedBase);
 }
 
-void turnLeft(int speedBase = 200) { // 左に曲がる関数
+void turnLeft(int speedBase = 150) { // 左に曲がる関数
   digitalWrite(motor_l1, LOW);
   digitalWrite(motor_l2, HIGH);
   analogWrite(pwm_motor_l, speedBase + 25);
   digitalWrite(motor_r1, HIGH);
   digitalWrite(motor_r2, LOW);
-  analogWrite(pwm_motor_r, speedBase - 25);
+  analogWrite(pwm_motor_r, speedBase);
 }
 
-void turnRight(int speedBase = 200) { // 右に曲がる関数
+void turnRight(int speedBase = 150) { // 右に曲がる関数
   digitalWrite(motor_l1, HIGH);
   digitalWrite(motor_l2, LOW);
-  analogWrite(pwm_motor_l, speedBase - 25);
+  analogWrite(pwm_motor_l, speedBase);
   digitalWrite(motor_r1, LOW);
   digitalWrite(motor_r2, HIGH);
   analogWrite(pwm_motor_r, speedBase + 25);
