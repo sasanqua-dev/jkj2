@@ -18,8 +18,16 @@ int val_r = 0;
 // ライントレース用のパラメータ
 // 黒い線の上では反射が少なく analogRead の値が大きくなる想定
 // 実機に合わせて threshold を調整する
-const int threshold = 500;    // 白／黒を判定するしきい値
-const int traceSpeed = 180;   // ライントレース中の基本速度（0-255）
+const int threshold = 500;    // 白／黒を判定するしきい値（復帰判定用）
+const int baseSpeed = 200;    // ライントレース中の基本速度（0-255）
+
+// PID ゲイン（実機に合わせて調整する）
+// error = val_l - val_r （-1023 ～ +1023 程度のレンジ）
+//   error > 0 … 左センサが黒寄り＝右にずれている → 左へ旋回
+//   error < 0 … 右センサが黒寄り＝左にずれている → 右へ旋回
+const float Kp = 0.15;        // 比例ゲイン
+const float Kd = 0.80;        // 微分ゲイン
+int prev_error = 0;
 
 // 線を見失ったと判断するまでの時間（ms）。両方白がこの時間継続したら復帰動作に入る
 const unsigned long lostLineTimeout = 500;
@@ -44,124 +52,114 @@ void stopMotor() { // モータを停止させる関数
   analogWrite(pwm_motor_r, 0);
 }
 
+// 左右のPWM値を指定してモータを駆動する（負の値で逆回転）
+void drive(int l_pwm, int r_pwm) {
+  // 左モータ
+  if (l_pwm >= 0) {
+    digitalWrite(motor_l1, HIGH);
+    digitalWrite(motor_l2, LOW);
+  } else {
+    digitalWrite(motor_l1, LOW);
+    digitalWrite(motor_l2, HIGH);
+    l_pwm = -l_pwm;
+  }
+  if (l_pwm > 255) l_pwm = 255;
+  analogWrite(pwm_motor_l, l_pwm);
+  // 右モータ
+  if (r_pwm >= 0) {
+    digitalWrite(motor_r1, HIGH);
+    digitalWrite(motor_r2, LOW);
+  } else {
+    digitalWrite(motor_r1, LOW);
+    digitalWrite(motor_r2, HIGH);
+    r_pwm = -r_pwm;
+  }
+  if (r_pwm > 255) r_pwm = 255;
+  analogWrite(pwm_motor_r, r_pwm);
+}
+
 void forward(int speedBase = 200) { // 前進させる関数
-  digitalWrite(motor_l1, HIGH);
-  digitalWrite(motor_l2, LOW);
-  analogWrite(pwm_motor_l, speedBase);
-  digitalWrite(motor_r1, HIGH);
-  digitalWrite(motor_r2, LOW);
-  analogWrite(pwm_motor_r, speedBase);
+  drive(speedBase, speedBase);
 }
 
 void backward(int speedBase = 200) { // 後退させる関数
-  digitalWrite(motor_l1, LOW);
-  digitalWrite(motor_l2, HIGH);
-  analogWrite(pwm_motor_l, speedBase);
-  digitalWrite(motor_r1, LOW);
-  digitalWrite(motor_r2, HIGH);
-  analogWrite(pwm_motor_r, speedBase);
+  drive(-speedBase, -speedBase);
 }
 
-void turnLeft(int speedBase = 150) { // 左に曲がる関数
-  digitalWrite(motor_l1, LOW);
-  digitalWrite(motor_l2, HIGH);
-  analogWrite(pwm_motor_l, speedBase + 25);
-  digitalWrite(motor_r1, HIGH);
-  digitalWrite(motor_r2, LOW);
-  analogWrite(pwm_motor_r, speedBase);
+void turnLeft(int speedBase = 150) { // 左に曲がる関数（復帰用：その場旋回）
+  drive(-(speedBase + 25), speedBase);
 }
 
-void turnRight(int speedBase = 150) { // 右に曲がる関数
-  digitalWrite(motor_l1, HIGH);
-  digitalWrite(motor_l2, LOW);
-  analogWrite(pwm_motor_l, speedBase);
-  digitalWrite(motor_r1, LOW);
-  digitalWrite(motor_r2, HIGH);
-  analogWrite(pwm_motor_r, speedBase + 25);
+void turnRight(int speedBase = 150) { // 右に曲がる関数（復帰用：その場旋回）
+  drive(speedBase, -(speedBase + 25));
 }
 
-// ライントレース用：両輪とも前進させつつ左右の速度差で緩やかに曲がる
-// diff が大きいほど曲がりが鋭くなる
-void curveLeft(int speedBase = 180, int diff = 80) { // 左方向へ緩やかに曲がる
-  int l = speedBase - diff;
-  int r = speedBase + diff;
-  if (l < 0) l = 0;
-  if (r > 255) r = 255;
-  digitalWrite(motor_l1, HIGH);
-  digitalWrite(motor_l2, LOW);
-  analogWrite(pwm_motor_l, l);
-  digitalWrite(motor_r1, HIGH);
-  digitalWrite(motor_r2, LOW);
-  analogWrite(pwm_motor_r, r);
-}
-
-void curveRight(int speedBase = 180, int diff = 80) { // 右方向へ緩やかに曲がる
-  int l = speedBase + diff;
-  int r = speedBase - diff;
-  if (l > 255) l = 255;
-  if (r < 0) r = 0;
-  digitalWrite(motor_l1, HIGH);
-  digitalWrite(motor_l2, LOW);
-  analogWrite(pwm_motor_l, l);
-  digitalWrite(motor_r1, HIGH);
-  digitalWrite(motor_r2, LOW);
-  analogWrite(pwm_motor_r, r);
-}
-
-void loop() { // 制御プログラム（2センサによるライントレース）
+void loop() { // 制御プログラム（2センサ＋PID によるライントレース）
   // 2つのセンサをアナログ値で読み取る
   val_l = analogRead(sensor_l);
   val_r = analogRead(sensor_r);
-  // シリアルポートに読み取った値を表示させる（threshold 調整に利用）
-  // 左 / 右 の順でタブ区切り出力
-  Serial.print(val_l);
-  Serial.print('\t');
-  Serial.println(val_r);
 
-  // 黒（線上） = val >= threshold, 白（床）= val < threshold
+  // 両方白（＝線がセンサ間もしくは線を見失った状態）の判定
   bool on_l = (val_l >= threshold);
   bool on_r = (val_r >= threshold);
+  bool both_white = (!on_l && !on_r);
 
-  // 2センサのパターンで分岐（2つのセンサは黒線を挟むように配置する想定）
-  //  LR
-  //  --
-  //  00 … 両方白 … 線が中央にある（センサ間）→ 直進。ただし一定時間継続したら復帰
-  //  10 … 左のみ黒 … 線が左にずれた → 左へ旋回して復帰
-  //  01 … 右のみ黒 … 線が右にずれた → 右へ旋回して復帰
-  //  11 … 両方黒  … 交差点／太線 → とりあえず直進
-  if (!on_l && !on_r) {
-    // 両方白 → 連続時間を計測して、一定時間超えたら線を見失ったと判断
-    unsigned long now = millis();
-    if (both_white_since == 0) {
-      both_white_since = now;
-    }
-    if (now - both_white_since >= lostLineTimeout) {
-      // 線を見失った → 直前の旋回方向へ復帰
-      if (last_turn_flag == 1) {
-        turnRight(traceSpeed);
-      } else if (last_turn_flag == 2) {
-        turnLeft(traceSpeed);
-      } else {
-        stopMotor();
-      }
-    } else {
-      // まだ許容時間内 → 直進
-      forward(traceSpeed);
-    }
-  } else if (on_l && !on_r) {
-    // 左が線を検出 → 左へ
-    curveLeft(traceSpeed);
-    last_turn_flag = 2;
-    both_white_since = 0;
-  } else if (!on_l && on_r) {
-    // 右が線を検出 → 右へ
-    curveRight(traceSpeed);
-    last_turn_flag = 1;
-    both_white_since = 0;
+  // 両方白の連続時間を計測
+  if (both_white) {
+    if (both_white_since == 0) both_white_since = millis();
   } else {
-    // 両方黒（交差点・太線）→ 直進
-    forward(traceSpeed);
     both_white_since = 0;
   }
+
+  // 一定時間「両方白」が続いたら線を見失ったと判断して復帰動作に入る
+  if (both_white && both_white_since != 0 &&
+      millis() - both_white_since >= lostLineTimeout) {
+    if (last_turn_flag == 1) {
+      turnRight(baseSpeed);
+    } else if (last_turn_flag == 2) {
+      turnLeft(baseSpeed);
+    } else {
+      stopMotor();
+    }
+    // シリアル出力（error は使わないので 0）
+    Serial.print(val_l); Serial.print('\t');
+    Serial.print(val_r); Serial.print('\t');
+    Serial.println(0);
+    delay(20);
+    return;
+  }
+
+  // ===== PID 制御 =====
+  // 誤差：左右センサ値の差。正なら右にずれている、負なら左にずれている
+  int error = val_l - val_r;
+  int d_error = error - prev_error;
+  float correction = Kp * (float)error + Kd * (float)d_error;
+
+  // 左右PWMを計算：正の correction で左を遅く、右を速くして左旋回
+  int l_pwm = baseSpeed - (int)correction;
+  int r_pwm = baseSpeed + (int)correction;
+
+  // クランプ（drive() 側でも上限はかかるが、下限側もここで丸める）
+  if (l_pwm > 255) l_pwm = 255;
+  if (r_pwm > 255) r_pwm = 255;
+  if (l_pwm < -255) l_pwm = -255;
+  if (r_pwm < -255) r_pwm = -255;
+
+  drive(l_pwm, r_pwm);
+
+  // 復帰用に直前の旋回方向を保持（誤差の符号で判定）
+  if (error > 50) {
+    last_turn_flag = 2; // 左
+  } else if (error < -50) {
+    last_turn_flag = 1; // 右
+  }
+
+  prev_error = error;
+
+  // シリアル出力（threshold / ゲイン調整に利用）：左 / 右 / error
+  Serial.print(val_l); Serial.print('\t');
+  Serial.print(val_r); Serial.print('\t');
+  Serial.println(error);
+
   delay(20); // 0.02 秒待つ（動作を続ける）
 }
