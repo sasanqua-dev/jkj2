@@ -7,8 +7,8 @@
 //   LCD  E(6)   -> D4
 //   LCD  D4(5)  -> D9
 //   LCD  D5(7)  -> D6
-//   LCD  D6(8)  -> D13
-//   LCD  D7(9)  -> D12
+//   LCD  D6(13)  -> D13
+//   LCD  D7(14)  -> D12
 //   LCD  R/W(10) -> GND（書き込み専用）
 //   LCD  Vss -> GND
 //   LCD  Vdd -> +5V
