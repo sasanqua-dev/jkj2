@@ -1,0 +1,83 @@
+// ACM0802C-NLW-BBH （8文字×2行 キャラクタLCD / HD44780互換）に
+// 顔文字を順に表示するサンプル。
+// 標準の LiquidCrystal ライブラリで 4bit モード接続。
+//
+// 配線（Arduino Uno）:
+//   LCD  RS  -> D7
+//   LCD  E   -> D8
+//   LCD  D4  -> D9
+//   LCD  D5  -> D6
+//   LCD  D6  -> D13
+//   LCD  D7  -> D12
+//   LCD  R/W -> GND（書き込み専用）
+//   LCD  Vss -> GND
+//   LCD  Vdd -> +5V
+//   LCD  V0  -> 10kΩ可変抵抗の中点（コントラスト調整）
+//
+// ※ line_trace.ino と同時に動かす場合は、モータ用に使っている
+//   D2〜D5,D10,D11 を避けてピンを選んでいます。
+
+#include <LiquidCrystal.h>
+
+// rs, e, d4, d5, d6, d7
+LiquidCrystal lcd(7, 8, 9, 6, 13, 12);
+
+// ---- 表示する顔文字 ----
+// 8文字×2行に収めるため、1行あたり最大8文字までにする。
+// HD44780 標準フォントに含まれる ASCII 文字だけで構成。
+const char* kaomojiList[] = {
+  "(^_^)",   // にこにこ
+  "(>_<)",   // ぎゅっ
+  "(T_T)",   // 泣き
+  "(^o^)",   // わーい
+  "(-_-)",   // むすっ
+  "(*_*)",   // びっくり
+  "(=_=)",   // ねむい
+  "(^^)v",   // ピース
+};
+const int KAOMOJI_NUM = sizeof(kaomojiList) / sizeof(kaomojiList[0]);
+
+// ---- カスタム文字（ハート）----
+// CGRAM スロット 0 に 5x8 のハートを登録して \0 で参照する。
+byte heart[8] = {
+  0b00000,
+  0b01010,
+  0b11111,
+  0b11111,
+  0b11111,
+  0b01110,
+  0b00100,
+  0b00000,
+};
+
+void setup() {
+  lcd.begin(8, 2);          // 8桁×2行
+  lcd.createChar(0, heart); // CGRAM[0] にハートを登録
+  lcd.clear();
+
+  // 起動メッセージ
+  lcd.setCursor(0, 0);
+  lcd.print("Hello!  ");
+  lcd.setCursor(0, 1);
+  lcd.print("Kaomoji ");
+  delay(1500);
+}
+
+void loop() {
+  for (int i = 0; i < KAOMOJI_NUM; i++) {
+    lcd.clear();
+
+    // 1行目：番号とハート
+    lcd.setCursor(0, 0);
+    lcd.print("No.");
+    lcd.print(i + 1);
+    lcd.print(" ");
+    lcd.write((byte)0); // ハート
+
+    // 2行目：顔文字（中央寄せっぽく1文字下げ）
+    lcd.setCursor(1, 1);
+    lcd.print(kaomojiList[i]);
+
+    delay(1200);
+  }
+}
