@@ -13,13 +13,13 @@ const int sensor_r = A4;
 // ---- チューニングパラメータ ----
 // センサ生値のキャリブレーション
 // シリアルプロッタで val_l, val_r を見て、白床と黒線上の値を実測して入れる
-const int WHITE_VAL = 200;   // 白床上での analogRead 値（おおよそ）
+const int WHITE_VAL = 600;   // 白床上での analogRead 値（おおよそ）
 const int BLACK_VAL = 900;   // 黒線上での analogRead 値（おおよそ）
 
 // 速度（0-255）
-const int BASE_SPEED   = 130;  // 直線時のベース速度
-const int MIN_SPEED    = 60;   // カーブ時の最低ベース速度（ここまで落ちる）
-const int MAX_OUTPUT   = 200;  // モータへ出すPWMの上限（飽和防止）
+const int BASE_SPEED   = 100;  // 直線時のベース速度
+const int MIN_SPEED    = 80;   // カーブ時の最低ベース速度（ここまで落ちる）
+const int MAX_OUTPUT   = 120;  // モータへ出すPWMの上限（飽和防止）
 
 // PDゲイン（実機で調整。まずはKpから）
 const float Kp = 0.45;   // 比例：ズレに対する反応の強さ
