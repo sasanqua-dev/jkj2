@@ -19,7 +19,7 @@ void loop() {
   } else if (val_left < 750 && val_right < 750) {
     // L: 白 R: 白 → 要検討
     forward();
-  } else if (var_left < 750 && var_right >= 750) {
+  } else if (val_left < 750 && val_right >= 750) {
     // L: 白 R: 黒 → 右に曲がる
     turnRight();
   }
