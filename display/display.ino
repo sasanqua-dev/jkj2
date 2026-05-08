@@ -3,16 +3,19 @@
 // 標準の LiquidCrystal ライブラリで 4bit モード接続。
 //
 // 配線（Arduino Uno）:
-//   LCD  RS(4)  -> D7
-//   LCD  E(6)   -> D4
-//   LCD  D4(5)  -> D9
-//   LCD  D5(7)  -> D6
-//   LCD  D6(13)  -> D13
-//   LCD  D7(14)  -> D12
-//   LCD  R/W(10) -> GND（書き込み専用）
-//   LCD  Vss -> GND
-//   LCD  Vdd -> +5V
-//   LCD  V0  -> 10kΩ可変抵抗の中点（コントラスト調整）
+//   LCD  1番 Vss  -> GND
+//   LCD  2番 Vdd  -> +5V
+//   LCD  3番 V0   -> 10kΩ可変抵抗の中点（コントラスト調整）
+//   LCD  4番 RS   -> D7
+//   LCD  5番 R/W  -> GND（必ず GND。書き込み専用）
+//   LCD  6番 E    -> D4（本機は D8 不良のため D4 を使用）
+//   LCD  7-10番 D0-D3 -> 未接続（4bitモード）
+//   LCD  11番 D4  -> D9
+//   LCD  12番 D5  -> D6
+//   LCD  13番 D6  -> D13
+//   LCD  14番 D7  -> D12
+//   LCD  15番 A   -> +5V（必要なら抵抗経由）
+//   LCD  16番 K   -> GND
 //
 // ※ line_trace.ino と同時に動かす場合は、モータ用に使っている
 //   D2〜D5,D10,D11 を避けてピンを選んでいます。
@@ -51,7 +54,12 @@ byte heart[8] = {
 };
 
 void setup() {
+  Serial.begin(9600);
+  Serial.println("setup start");
+  delay(100);               // 電源安定待ち（LCD初期化前）
+
   lcd.begin(8, 2);          // 8桁×2行
+  Serial.println("lcd.begin done");
   lcd.createChar(0, heart); // CGRAM[0] にハートを登録
   lcd.clear();
 
