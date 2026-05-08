@@ -10,10 +10,18 @@ void loop() {
   int val_left = analogRead(A4);
   analogWrite(11, 150);
   Serial.println(val_right, val_left);
-  if (val_right < 500) {
-    digitalWrite(13, HIGH);
-  } else {
-    digitalWrite(13, LOW);
+  if (val_left >= 750 && val_right >= 750) {
+    // L: 黒 R: 黒 → 直進
+    forward();
+  } else if (val_left >= 750 && val_right < 750) {
+    // L: 黒 R: 白 → 左に曲がる
+    turnLeft();
+  } else if (val_left < 750 && val_right < 750) {
+    // L: 白 R: 白 → 要検討
+    forward();
+  } else if (var_left < 750 && var_right >= 750) {
+    // L: 白 R: 黒 → 右に曲がる
+    turnRight();
   }
   delay(500);
 }
