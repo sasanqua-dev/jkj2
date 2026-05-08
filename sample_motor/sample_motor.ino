@@ -18,7 +18,7 @@ int val_r = 0;
 // ライントレース用のパラメータ
 // 黒い線の上では反射が少なく analogRead の値が大きくなる想定
 // 実機に合わせて threshold を調整する
-const int threshold = 500;    // 白／黒を判定するしきい値
+const int threshold = 750;    // 白／黒を判定するしきい値
 const int traceSpeed = 180;   // ライントレース中の基本速度（0-255）
 
 // 線を見失ったと判断するまでの時間（ms）。両方白がこの時間継続したら復帰動作に入る
