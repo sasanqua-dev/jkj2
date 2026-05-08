@@ -3,13 +3,13 @@
 // 標準の LiquidCrystal ライブラリで 4bit モード接続。
 //
 // 配線（Arduino Uno）:
-//   LCD  RS  -> D7
-//   LCD  E   -> D8
-//   LCD  D4  -> D9
-//   LCD  D5  -> D6
-//   LCD  D6  -> D13
-//   LCD  D7  -> D12
-//   LCD  R/W -> GND（書き込み専用）
+//   LCD  RS(4)  -> D7
+//   LCD  E(6)   -> D8
+//   LCD  D4(5)  -> D9
+//   LCD  D5(7)  -> D6
+//   LCD  D6(8)  -> D13
+//   LCD  D7(9)  -> D12
+//   LCD  R/W(10) -> GND（書き込み専用）
 //   LCD  Vss -> GND
 //   LCD  Vdd -> +5V
 //   LCD  V0  -> 10kΩ可変抵抗の中点（コントラスト調整）
