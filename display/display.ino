@@ -23,7 +23,12 @@
 #include <LiquidCrystal.h>
 
 // rs, e, d4, d5, d6, d7
-LiquidCrystal lcd(7, 4, 9, 6, 13, 12);
+// E=D2, RS=D3 に逃がした版（D4/D7 が怪しいので切り分け）
+LiquidCrystal lcd(3, 2, 9, 6, 13, 12);
+// 元の構成（戻すならこちら）：
+// LiquidCrystal lcd(7, 4, 9, 6, 13, 12);
+// もしデータ線が逆順なら：
+// LiquidCrystal lcd(7, 4, 12, 13, 6, 9);
 
 // ---- 表示する顔文字 ----
 // 8文字×2行に収めるため、1行あたり最大8文字までにする。
