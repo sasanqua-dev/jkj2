@@ -19,11 +19,8 @@ int val_r = 0;
 // 黒い線の上では反射が少なく analogRead の値が大きくなる想定
 // 実機に合わせて threshold を調整する
 const int threshold = 750;    // 白／黒を判定するしきい値
-const int traceSpeed = 180;   // ライントレース中の基本速度（0-255）
-
-// 線を見失ったと判断するまでの時間（ms）。両方白がこの時間継続したら復帰動作に入る
-const unsigned long lostLineTimeout = 500;
-unsigned long both_white_since = 0; // 両方白になった時刻（0 = 両方白ではない）
+const int traceSpeed = 95;   // ライントレース中の基本速度（0-255）
+bool curving = false;
 
 void setup() { // 実行時に1回だけ実行
   pinMode(motor_r1, OUTPUT); // motor_r1 に対応するピン（2番）を出力ポートに設定
@@ -51,6 +48,7 @@ void forward(int speedBase = 200) { // 前進させる関数
   digitalWrite(motor_r1, HIGH);
   digitalWrite(motor_r2, LOW);
   analogWrite(pwm_motor_r, speedBase);
+  delay(5);
 }
 
 void backward(int speedBase = 200) { // 後退させる関数
@@ -60,6 +58,7 @@ void backward(int speedBase = 200) { // 後退させる関数
   digitalWrite(motor_r1, LOW);
   digitalWrite(motor_r2, HIGH);
   analogWrite(pwm_motor_r, speedBase);
+  delay(20);
 }
 
 void turnLeft(int speedBase = 150) { // 左に曲がる関数
@@ -82,8 +81,8 @@ void turnRight(int speedBase = 150) { // 右に曲がる関数
 
 // ライントレース用：両輪とも前進させつつ左右の速度差で緩やかに曲がる
 // diff が大きいほど曲がりが鋭くなる
-void curveLeft(int speedBase = 180, int diff = 80) { // 左方向へ緩やかに曲がる
-  int l = speedBase - diff;
+void curveLeft(int speedBase = 180, int diff = 30) { // 左方向へ緩やかに曲がる
+  int l = 75;
   int r = speedBase + diff;
   if (l < 0) l = 0;
   if (r > 255) r = 255;
@@ -93,11 +92,12 @@ void curveLeft(int speedBase = 180, int diff = 80) { // 左方向へ緩やかに
   digitalWrite(motor_r1, HIGH);
   digitalWrite(motor_r2, LOW);
   analogWrite(pwm_motor_r, r);
+  delay(2);
 }
 
-void curveRight(int speedBase = 180, int diff = 80) { // 右方向へ緩やかに曲がる
+void curveRight(int speedBase = 180, int diff = 30) { // 右方向へ緩やかに曲がる
   int l = speedBase + diff;
-  int r = speedBase - diff;
+  int r = 75;
   if (l > 255) l = 255;
   if (r < 0) r = 0;
   digitalWrite(motor_l1, HIGH);
@@ -106,6 +106,7 @@ void curveRight(int speedBase = 180, int diff = 80) { // 右方向へ緩やか�
   digitalWrite(motor_r1, HIGH);
   digitalWrite(motor_r2, LOW);
   analogWrite(pwm_motor_r, r);
+  delay(2);
 }
 
 void loop() { // 制御プログラム（2センサによるライントレース）
@@ -131,37 +132,25 @@ void loop() { // 制御プログラム（2センサによるライントレー�
   //  11 … 両方黒  … 交差点／太線 → とりあえず直進
   if (!on_l && !on_r) {
     // 両方白 → 連続時間を計測して、一定時間超えたら線を見失ったと判断
-    unsigned long now = millis();
-    if (both_white_since == 0) {
-      both_white_since = now;
-    }
-    if (now - both_white_since >= lostLineTimeout) {
-      // 線を見失った → 直前の旋回方向へ復帰
-      if (last_turn_flag == 1) {
-        turnRight(traceSpeed);
-      } else if (last_turn_flag == 2) {
-        turnLeft(traceSpeed);
-      } else {
-        stopMotor();
-      }
-    } else {
-      // まだ許容時間内 → 直進
-      forward(traceSpeed);
-    }
+    curving = false;
+    forward(traceSpeed + 40);
   } else if (on_l && !on_r) {
     // 左が線を検出 → 左へ
-    curveLeft(traceSpeed);
-    last_turn_flag = 2;
-    both_white_since = 0;
+    if (!curving) {
+      backward(100);
+      curving = true;
+    }
+    curveRight(traceSpeed - 5);
   } else if (!on_l && on_r) {
     // 右が線を検出 → 右へ
-    curveRight(traceSpeed);
-    last_turn_flag = 1;
-    both_white_since = 0;
+    if (!curving) {
+      backward(100);
+      curving = true;
+    }
+    curveLeft(traceSpeed - 5);
   } else {
     // 両方黒（交差点・太線）→ 直進
+    curving = false;
     forward(traceSpeed);
-    both_white_since = 0;
   }
-  delay(20); // 0.02 秒待つ（動作を続ける）
 }
