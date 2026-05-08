@@ -107,11 +107,11 @@ void loop() { // 制御プログラム（2センサによるライントレー�
   } else if (on_l && !on_r) {
     // 左が線を検出 → 左へ
     backward(100);
-    curveLeft(traceSpeed + 30);
+    curveRight(traceSpeed + 30);
   } else if (!on_l && on_r) {
     // 右が線を検出 → 右へ
     backward(100);
-    curveRight(traceSpeed + 30);
+    curveLeft(traceSpeed + 30);
   } else {
     // 両方黒（交差点・太線）→ 直進
     forward(traceSpeed);
