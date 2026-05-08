@@ -19,7 +19,7 @@ int val_r = 0;
 // 黒い線の上では反射が少なく analogRead の値が大きくなる想定
 // 実機に合わせて threshold を調整する
 const int threshold = 750;    // 白／黒を判定するしきい値
-const int traceSpeed = 95;   // ライントレース中の基本速度（0-255）
+const int traceSpeed = 85;   // ライントレース中の基本速度（0-255）
 bool curving = false;
 
 void setup() { // 実行時に1回だけ実行
@@ -82,7 +82,7 @@ void turnRight(int speedBase = 150) { // 右に曲がる関数
 // ライントレース用：両輪とも前進させつつ左右の速度差で緩やかに曲がる
 // diff が大きいほど曲がりが鋭くなる
 void curveLeft(int speedBase = 180, int diff = 30) { // 左方向へ緩やかに曲がる
-  int l = 75;
+  int l = 10;
   int r = speedBase + diff;
   if (l < 0) l = 0;
   if (r > 255) r = 255;
@@ -97,7 +97,7 @@ void curveLeft(int speedBase = 180, int diff = 30) { // 左方向へ緩やかに
 
 void curveRight(int speedBase = 180, int diff = 30) { // 右方向へ緩やかに曲がる
   int l = speedBase + diff;
-  int r = 75;
+  int r = 10;
   if (l > 255) l = 255;
   if (r < 0) r = 0;
   digitalWrite(motor_l1, HIGH);
@@ -140,14 +140,14 @@ void loop() { // 制御プログラム（2センサによるライントレー�
       backward(100);
       curving = true;
     }
-    curveRight(traceSpeed - 5);
+    curveLeft(traceSpeed+30);
   } else if (!on_l && on_r) {
     // 右が線を検出 → 右へ
     if (!curving) {
       backward(100);
       curving = true;
     }
-    curveLeft(traceSpeed - 5);
+    curveRight(traceSpeed+30);
   } else {
     // 両方黒（交差点・太線）→ 直進
     curving = false;
