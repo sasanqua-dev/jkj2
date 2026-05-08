@@ -4,7 +4,7 @@
 //
 // 配線（Arduino Uno）:
 //   LCD  RS(4)  -> D7
-//   LCD  E(6)   -> D8
+//   LCD  E(6)   -> D4
 //   LCD  D4(5)  -> D9
 //   LCD  D5(7)  -> D6
 //   LCD  D6(8)  -> D13
@@ -20,7 +20,7 @@
 #include <LiquidCrystal.h>
 
 // rs, e, d4, d5, d6, d7
-LiquidCrystal lcd(7, 8, 9, 6, 13, 12);
+LiquidCrystal lcd(7, 4, 9, 6, 13, 12);
 
 // ---- 表示する顔文字 ----
 // 8文字×2行に収めるため、1行あたり最大8文字までにする。
