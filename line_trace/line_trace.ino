@@ -15,13 +15,13 @@ const int sensor_r = A4;
 const int threshold = 750;
 
 // ---- 速度設定（動作範囲 70〜130）----
-const int MIN_DRIVE    = 70;   // 動作下限
+const int MIN_DRIVE    = 0;   // 動作下限
 const int MAX_DRIVE    = 130;  // 動作上限
 const int BASE_SPEED   = 100;  // 直進時の基本速度（範囲のほぼ中央）
-const int OUTER_GENTLE = 120;  // 緩いカーブ時の外輪
-const int INNER_GENTLE = 80;   // 緩いカーブ時の内輪
-const int OUTER_SHARP  = 130;  // 急カーブ（両方黒）時の外輪
-const int INNER_SHARP  = 70;   // 急カーブ時の内輪（=MIN_DRIVE、下限）
+const int OUTER_GENTLE = 90;  // 緩いカーブ時の外輪
+const int INNER_GENTLE = 40;   // 緩いカーブ時の内輪
+const int OUTER_SHARP  = 90;  // 急カーブ（両方黒）時の外輪
+const int INNER_SHARP  = 0;   // 急カーブ時の内輪（=MIN_DRIVE、下限）
 
 // 直近の旋回方向: 0=なし, 1=右, 2=左
 int last_turn = 0;
