@@ -12,9 +12,8 @@ const int sensor_r = A4;
 
 // ---- チューニングパラメータ ----
 // センサ生値のキャリブレーション
-// シリアルプロッタで val_l, val_r を見て、白床と黒線上の値を実測して入れる
+// シリアルプロッタで val_l, val_r を見て、白床上の値を実測して入れる
 const int WHITE_VAL = 600;   // 白床上での analogRead 値（おおよそ）
-const int BLACK_VAL = 900;   // 黒線上での analogRead 値（おおよそ）
 
 // 速度（0-255）
 const int BASE_SPEED   = 100;  // 直線時のベース速度
@@ -25,8 +24,8 @@ const int MAX_OUTPUT   = 120;  // モータへ出すPWMの上限（飽和防止�
 const float Kp = 0.45;   // 比例：ズレに対する反応の強さ
 const float Kd = 3.5;    // 微分：ズレの変化に対する反応（揺り戻しを抑える）
 
-// カーブ時減速の感度。errorの絶対値がこの値で MIN_SPEED まで落ちる
-const int CURVE_SLOWDOWN_AT = 70;
+// カーブ時減速の感度。|error| がこの値以上で base が MIN_SPEED まで落ちる
+const int CURVE_SLOWDOWN_AT = 700;
 
 // 完全ロスト時の探索旋回速度
 const int LOST_OUTER = 110;
@@ -90,6 +89,8 @@ void loop() {
     Serial.print(val_l); Serial.print('\t');
     Serial.print(val_r); Serial.print('\t');
     Serial.println("LOST");
+    // 復帰時に derivative が暴れないよう履歴をリセット
+    last_error = 0;
     return;
   }
 
@@ -109,7 +110,7 @@ void loop() {
   float err_abs = fabs(error);
   int base = BASE_SPEED;
   if (err_abs > 0) {
-    int reduce = (int)((BASE_SPEED - MIN_SPEED) * (err_abs / (CURVE_SLOWDOWN_AT * 10.0)));
+    int reduce = (int)((BASE_SPEED - MIN_SPEED) * (err_abs / (float)CURVE_SLOWDOWN_AT));
     if (reduce > BASE_SPEED - MIN_SPEED) reduce = BASE_SPEED - MIN_SPEED;
     base = BASE_SPEED - reduce;
   }
