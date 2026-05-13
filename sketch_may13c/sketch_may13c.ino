@@ -22,6 +22,10 @@ const int threshold = 750;    // 白／黒を判定するしきい値
 const int traceSpeed = 95;   // ライントレース中の基本速度（0-255）
 bool curving = false;
 
+unsigned long whiteStarttime = 0;
+bool whiteflag = false;
+bool hasRotated = false;
+
 void setup() { // 実行時に1回だけ実行
   pinMode(motor_r1, OUTPUT); // motor_r1 に対応するピン（2番）を出力ポートに設定
   pinMode(motor_r2, OUTPUT);
@@ -81,32 +85,48 @@ void turnRight(int speedBase = 150) { // 右に曲がる関数
 
 // ライントレース用：両輪とも前進させつつ左右の速度差で緩やかに曲がる
 // diff が大きいほど曲がりが鋭くなる
-void curveLeft(int speedBase = 180, int diff = 30) { // 左方向へ緩やかに曲がる
-  int l = 0;
+void curveLeft(int speedBase = 100, int diff = 30) { // 左方向へ緩やかに曲がる
+  int l = 70;
   int r = speedBase + diff;
-  if (l < 0) l = 0;
+  if (l < 0) l = 70;
   if (r > 255) r = 255;
   digitalWrite(motor_l1, HIGH);
   digitalWrite(motor_l2, LOW);
   analogWrite(pwm_motor_l, l);
-  digitalWrite(motor_r1, LOW);
-  digitalWrite(motor_r2, HIGH);
+  digitalWrite(motor_r1, HIGH);
+  digitalWrite(motor_r2, LOW);
   analogWrite(pwm_motor_r, r);
-  delay(1);
+  delay(0.5);
 }
 
-void curveRight(int speedBase = 180, int diff = 30) { // 右方向へ緩やかに曲がる
+void curveRight(int speedBase = 100, int diff = 30) { // 右方向へ緩やかに曲がる
   int l = speedBase + diff;
-  int r = 0;
+  int r = 70;
   if (l > 255) l = 255;
-  if (r < 0) r = 0;
-  digitalWrite(motor_l1, LOW);
-  digitalWrite(motor_l2, HIGH);
+  if (r < 0) r = 70;
+  digitalWrite(motor_l1, HIGH);
+  digitalWrite(motor_l2, LOW);
   analogWrite(pwm_motor_l, l);
   digitalWrite(motor_r1, HIGH);
   digitalWrite(motor_r2, LOW);
   analogWrite(pwm_motor_r, r);
-  delay(1);
+  delay(0.5);
+}
+
+void whitesensor(bool bothwhite) {
+  if (bothwhite) {
+    if (!whiteflag) {
+      whiteStarttime = millis();
+      whiteflag = true;
+    } else {
+    if (millis() - whiteStarttime >= 400) {
+      if (!hasRotated) {
+        backward(traceSpeed);
+        hasRotated =true;
+      }
+    }
+  }
+  }
 }
 
 void loop() { // 制御プログラム（2センサによるライントレース）
@@ -133,16 +153,19 @@ void loop() { // 制御プログラム（2センサによるライントレー�
   if (!on_l && !on_r) {
     // 両方白 → 連続時間を計測して、一定時間超えたら線を見失ったと判断
     curving = false;
-    forward(traceSpeed+ 45);
+    whitesensor(true);
   } else if (on_l && !on_r) {
     // 左が線を検出 → 左へ
-    curveLeft(traceSpeed );
+    curveLeft(traceSpeed +40);
+    whitesensor(false);
   } else if (!on_l && on_r) {
     // 右が線を検出 → 右へ
-    curveRight(traceSpeed );
+    curveRight(traceSpeed +40);
+    whitesensor(false);
   } else {
     // 両方黒（交差点・太線）→ 直進
     curving = false;
     forward(traceSpeed);
+    whitesensor(false);
   }
 }

@@ -1,4 +1,4 @@
-// Arduino Uno のピン配置
+#include <Servo.h>// Arduino Uno のピン配置
 // モータ
 const int motor_r1 = 2; // Arduinoの2番ピンに対応
 const int motor_r2 = 3;
@@ -6,6 +6,9 @@ const int pwm_motor_r = 10; // PWM信号生成可能なピンを選ぶ
 const int motor_l1 = 4;
 const int motor_l2 = 5;
 const int pwm_motor_l = 11;
+
+const int SERVO_PIN = 30;
+Servo myServo;
 
 int last_turn_flag = 0; // 1 = 右 2 = 左
 // フォトリフレクタ（2センサ構成：左・右）
@@ -21,6 +24,10 @@ int val_r = 0;
 const int threshold = 750;    // 白／黒を判定するしきい値
 const int traceSpeed = 95;   // ライントレース中の基本速度（0-255）
 bool curving = false;
+
+unsigned long whiteStarttime = 0;
+bool whiteflag = false;
+bool hasRotated = false;
 
 void setup() { // 実行時に1回だけ実行
   pinMode(motor_r1, OUTPUT); // motor_r1 に対応するピン（2番）を出力ポートに設定
@@ -61,27 +68,7 @@ void backward(int speedBase = 200) { // 後退させる関数
   delay(20);
 }
 
-void turnLeft(int speedBase = 150) { // 左に曲がる関数
-  digitalWrite(motor_l1, LOW);
-  digitalWrite(motor_l2, HIGH);
-  analogWrite(pwm_motor_l, speedBase + 25);
-  digitalWrite(motor_r1, HIGH);
-  digitalWrite(motor_r2, LOW);
-  analogWrite(pwm_motor_r, speedBase);
-}
-
-void turnRight(int speedBase = 150) { // 右に曲がる関数
-  digitalWrite(motor_l1, HIGH);
-  digitalWrite(motor_l2, LOW);
-  analogWrite(pwm_motor_l, speedBase);
-  digitalWrite(motor_r1, LOW);
-  digitalWrite(motor_r2, HIGH);
-  analogWrite(pwm_motor_r, speedBase + 25);
-}
-
-// ライントレース用：両輪とも前進させつつ左右の速度差で緩やかに曲がる
-// diff が大きいほど曲がりが鋭くなる
-void curveLeft(int speedBase = 180, int diff = 30) { // 左方向へ緩やかに曲がる
+void turnLeft(int speedBase = 180, int diff = 30) { // 左方向へ緩やかに曲がる
   int l = 0;
   int r = speedBase + diff;
   if (l < 0) l = 0;
@@ -95,7 +82,7 @@ void curveLeft(int speedBase = 180, int diff = 30) { // 左方向へ緩やかに
   delay(1);
 }
 
-void curveRight(int speedBase = 180, int diff = 30) { // 右方向へ緩やかに曲がる
+void turnRight(int speedBase = 180, int diff = 30) { // 右方向へ緩やかに曲がる
   int l = speedBase + diff;
   int r = 0;
   if (l > 255) l = 255;
@@ -107,6 +94,52 @@ void curveRight(int speedBase = 180, int diff = 30) { // 右方向へ緩やか�
   digitalWrite(motor_r2, LOW);
   analogWrite(pwm_motor_r, r);
   delay(1);
+}
+
+// ライントレース用：両輪とも前進させつつ左右の速度差で緩やかに曲がる
+// diff が大きいほど曲がりが鋭くなる
+void curveLeft(int speedBase = 180, int diff = 30) { // 左方向へ緩やかに曲がる
+  int l = 40;
+  int r = speedBase + diff;
+  if (l < 0) l = 80;
+  if (r > 255) r = 255;
+  digitalWrite(motor_l1, HIGH);
+  digitalWrite(motor_l2, LOW);
+  analogWrite(pwm_motor_l, l);
+  digitalWrite(motor_r1, HIGH);
+  digitalWrite(motor_r2, LOW);
+  analogWrite(pwm_motor_r, r);
+  delay(1);
+}
+
+void curveRight(int speedBase = 180, int diff = 30) { // 右方向へ緩やかに曲がる
+  int l = speedBase + diff;
+  int r = 40;
+  if (l > 255) l = 255;
+  if (r < 0) r = 80;
+  digitalWrite(motor_l1, HIGH);
+  digitalWrite(motor_l2, LOW);
+  analogWrite(pwm_motor_l, l);
+  digitalWrite(motor_r1, HIGH);
+  digitalWrite(motor_r2, LOW);
+  analogWrite(pwm_motor_r, r);
+  delay(1);
+}
+
+void whitesensor(bool bothwhite) {
+  if (bothwhite) {
+    if (!whiteflag) {
+      whiteStarttime = millis();
+      whiteflag = true;
+    } else {
+    if (millis() - whiteStarttime >= 400) {
+      if (!hasRotated) {
+        turnLeft(traceSpeed -5);
+        hasRotated =true;
+      }
+    }
+  }
+  }
 }
 
 void loop() { // 制御プログラム（2センサによるライントレース）
@@ -133,16 +166,20 @@ void loop() { // 制御プログラム（2センサによるライントレー�
   if (!on_l && !on_r) {
     // 両方白 → 連続時間を計測して、一定時間超えたら線を見失ったと判断
     curving = false;
-    forward(traceSpeed+ 45);
+    whitesensor(true);
   } else if (on_l && !on_r) {
     // 左が線を検出 → 左へ
-    curveLeft(traceSpeed );
+    curveLeft(traceSpeed -40);
+    whitesensor(false);
   } else if (!on_l && on_r) {
     // 右が線を検出 → 右へ
-    curveRight(traceSpeed );
+    curveRight(traceSpeed -40);
+    whitesensor(false);
   } else {
     // 両方黒（交差点・太線）→ 直進
     curving = false;
-    forward(traceSpeed);
+    turnRight(traceSpeed -5);
+    whitesensor(false);
   }
+
 }
