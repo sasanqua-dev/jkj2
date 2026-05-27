@@ -1,3 +1,4 @@
+//直線-Uターン成功例-
 #include <Servo.h>// Arduino Uno のピン配置
 // モータ
 const int motor_r1 = 2; // Arduinoの2番ピンに対応
@@ -22,7 +23,7 @@ int val_r = 0;
 // 黒い線の上では反射が少なく analogRead の値が大きくなる想定
 // 実機に合わせて threshold を調整する
 const int threshold = 750;    // 白／黒を判定するしきい値
-const int traceSpeed = 95;   // ライントレース中の基本速度（0-255）
+const int traceSpeed = 110;   // ライントレース中の基本速度（0-255）
 bool curving = false;
 
 unsigned long whiteStarttime = 0;

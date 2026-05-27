@@ -1,3 +1,4 @@
+//ライントレース一周 time34.60
 // Arduino Uno のピン配置
 // モータ
 const int motor_r1 = 2; // Arduinoの2番ピンに対応
@@ -17,9 +18,9 @@ int val_r = 0;
 
 // ライントレース用のパラメータ
 // 黒い線の上では反射が少なく analogRead の値が大きくなる想定
-// 実機に合わせて threshold を調整する
+// 実機に合わせて threshold を調整する                
 const int threshold = 750;    // 白／黒を判定するしきい値
-const int traceSpeed = 95;   // ライントレース中の基本速度（0-255）
+const int traceSpeed = 125;   // ライントレース中の基本速度（0-255）
 bool curving = false;
 
 void setup() { // 実行時に1回だけ実行
@@ -54,29 +55,27 @@ void forward(int speedBase = 200) { // 前進させる関数
 void backward(int speedBase = 200) { // 後退させる関数
   digitalWrite(motor_l1, LOW);
   digitalWrite(motor_l2, HIGH);
-  analogWrite(pwm_motor_l, speedBase);
-  digitalWrite(motor_r1, LOW);
-  digitalWrite(motor_r2, HIGH);
   analogWrite(pwm_motor_r, speedBase);
   delay(20);
 }
 
 void turnLeft(int speedBase = 150) { // 左に曲がる関数
-  digitalWrite(motor_l1, LOW);
-  digitalWrite(motor_l2, HIGH);
-  analogWrite(pwm_motor_l, speedBase + 25);
-  digitalWrite(motor_r1, HIGH);
-  digitalWrite(motor_r2, LOW);
-  analogWrite(pwm_motor_r, speedBase);
+  digitalWrite(motor_l1, HIGH);
+  digitalWrite(motor_l2, LOW);
+  analogWrite(pwm_motor_l, speedBase + 50);
+  digitalWrite(motor_r1, LOW);
+  digitalWrite(motor_r2, HIGH);
+  analogWrite(pwm_motor_r, speedBase - 10);
+  
 }
 
 void turnRight(int speedBase = 150) { // 右に曲がる関数
-  digitalWrite(motor_l1, HIGH);
-  digitalWrite(motor_l2, LOW);
-  analogWrite(pwm_motor_l, speedBase);
-  digitalWrite(motor_r1, LOW);
-  digitalWrite(motor_r2, HIGH);
-  analogWrite(pwm_motor_r, speedBase + 25);
+  digitalWrite(motor_l1, LOW);
+  digitalWrite(motor_l2, HIGH);
+  analogWrite(pwm_motor_l, speedBase - 10);
+  digitalWrite(motor_r1, HIGH);
+  digitalWrite(motor_r2, LOW);
+  analogWrite(pwm_motor_r, speedBase + 50);
 }
 
 // ライントレース用：両輪とも前進させつつ左右の速度差で緩やかに曲がる
@@ -136,10 +135,10 @@ void loop() { // 制御プログラム（2センサによるライントレー�
     forward(traceSpeed+ 45);
   } else if (on_l && !on_r) {
     // 左が線を検出 → 左へ
-    curveLeft(traceSpeed );
+    turnRight(traceSpeed );
   } else if (!on_l && on_r) {
     // 右が線を検出 → 右へ
-    curveRight(traceSpeed );
+    turnLeft(traceSpeed );
   } else {
     // 両方黒（交差点・太線）→ 直進
     curving = false;

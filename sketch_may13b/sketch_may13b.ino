@@ -1,3 +1,4 @@
+//一周改良版
 #include <Servo.h>// Arduino Uno のピン配置
 // モータ
 const int motor_r1 = 2; // Arduinoの2番ピンに対応
