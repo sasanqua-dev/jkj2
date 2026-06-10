@@ -15,7 +15,8 @@ int left_foward_echo_pin = 8;    // Echo
 int right_foward_trig_pin = 6;    // Trigger
 int right_foward_echo_pin = 7;    // Echo
 
-long duration, cm, inches;
+long left_duration, right_duration;
+float left_cm, right_cm;
 
 
 void setup() { // 実行時に1回だけ実行
@@ -25,8 +26,10 @@ void setup() { // 実行時に1回だけ実行
   pinMode(motor_l2, OUTPUT);
   pinMode(pwm_motor_r, OUTPUT);
   pinMode(pwm_motor_l, OUTPUT);
-  pinMode(trigPin, OUTPUT);
-  pinMode(echoPin, INPUT);
+  pinMode(right_foward_trig_pin, OUTPUT);
+  pinMode(right_foward_echo_pin, INPUT);
+  pinMode(left_foward_trig_pin, OUTPUT);
+  pinMode(left_foward_echo_pin, INPUT);
   Serial.begin(9600);
 }
 
