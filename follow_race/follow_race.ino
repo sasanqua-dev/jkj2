@@ -10,8 +10,8 @@ const int pwm_motor_l = 11;
 const int traceSpeed = 125;   // 基本速度（0-255）
 
 // 追従用のパラメータ
-int left_foward_trig_pin = 9;    // Trigger
-int left_foward_echo_pin = 8;    // Echo
+int left_foward_trig_pin = 12;    // Trigger
+int left_foward_echo_pin = 13;    // Echo
 int right_foward_trig_pin = 6;    // Trigger
 int right_foward_echo_pin = 7;    // Echo
 
@@ -144,4 +144,21 @@ void loop() {
   Serial.println();
   
   delay(250);
+
+  bool on_l = (left_cm >= 10);
+  bool on_r = (right_cm >= 10);
+
+  if (!on_l && !on_r) {
+    // 両方白 → 連続時間を計測して、一定時間超えたら線を見失ったと判断
+    forward(traceSpeed+ 45);
+  } else if (on_l && !on_r) {
+    // 左が線を検出 → 左へ
+    turnRight(traceSpeed );
+  } else if (!on_l && on_r) {
+    // 右が線を検出 → 右へ
+    turnLeft(traceSpeed );
+  } else {
+    // 両方黒（交差点・太線）→ 直進
+    forward(traceSpeed);
+  }
 }
