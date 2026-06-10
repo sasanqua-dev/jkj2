@@ -109,27 +109,32 @@ void curveRight(int speedBase = 180, int diff = 30) { // 右方向へ緩やか�
 }
 
 void loop() {
-  // The sensor is triggered by a HIGH pulse of 10 or more microseconds.
-  // Give a short LOW pulse beforehand to ensure a clean HIGH pulse:
-  // Generate Signal
+  // ----------------------------------------------------
+  // 1. 左側のセンサー測定
+  // ----------------------------------------------------
   digitalWrite(left_foward_trig_pin, LOW);
-  digitalWrite(right_foward_trig_pin, LOW);
-  delayMicroseconds(5);
+  delayMicroseconds(2);
   digitalWrite(left_foward_trig_pin, HIGH);
-  digitalWrite(right_foward_trig_pin, HIGH);
   delayMicroseconds(10);
   digitalWrite(left_foward_trig_pin, LOW);
-  digitalWrite(right_foward_trig_pin, LOW);
- 
-  // Read Signal
-  pinMode(left_foward_echo_pin, INPUT);
-  pinMode(right_foward_echo_pin, INPUT);
-  left_duration = pulseIn(left_foward_echo_pin, HIGH);
-  right_duration = pulseIn(right_foward_echo_pin, HIGH);
+  
+  left_duration = pulseIn(left_foward_echo_pin, HIGH, 20000); // タイムアウトを20msに設定（約3.4m分）
+  left_cm = (left_duration / 2.0) / 29.1;
 
-  // Convert the time into a distance
-  left_cm = (left_duration/2) / 29.1;     // Divide by 29.1 or multiply by 0.0343
-  right_cm = (right_duration/2) / 29.1;   // Divide by 29.1 or multiply by 0.0343
+  // センサー同士の干渉を防ぐため、少しだけ間隔をあける
+  delay(20);
+
+  // ----------------------------------------------------
+  // 2. 右側のセンサー測定
+  // ----------------------------------------------------
+  digitalWrite(right_foward_trig_pin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(right_foward_trig_pin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(right_foward_trig_pin, LOW);
+  
+  right_duration = pulseIn(right_foward_echo_pin, HIGH, 20000); // タイムアウトを20msに設定
+  right_cm = (right_duration / 2.0) / 29.1;
 
   Serial.print("Left: ");
   Serial.print(left_cm);
