@@ -10,8 +10,8 @@ const int pwm_motor_l = 11;
 const int traceSpeed = 125;   // 基本速度（0-255）
 
 // 追従用のパラメータ
-int left_foward_trig_pin = 9;    // Trigger
-int left_foward_echo_pin = 8;    // Echo
+int left_foward_trig_pin = 12;    // Trigger
+int left_foward_echo_pin = 13;    // Echo
 int right_foward_trig_pin = 6;    // Trigger
 int right_foward_echo_pin = 7;    // Echo
 
