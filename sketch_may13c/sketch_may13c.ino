@@ -20,7 +20,7 @@ int val_r = 0;
 // 黒い線の上では反射が少なく analogRead の値が大きくなる想定
 // 実機に合わせて threshold を調整する
 const int threshold = 750;    // 白／黒を判定するしきい値
-const int traceSpeed = 100;   // ライントレース中の基本速度（0-255）
+const int traceSpeed = 70;   // ライントレース中の基本速度（0-255）
 bool curving = false;
 
 void setup() { // 実行時に1回だけ実行
@@ -131,7 +131,7 @@ void loop() { // 制御プログラム（2センサによるライントレー�
   if (!on_l && !on_r) {
     // 両方白 → 連続時間を計測して、一定時間超えたら線を見失ったと判断
     curving = false;
-    forward(traceSpeed+ 90);
+    forward(traceSpeed+ 40);
   } else if (on_l && !on_r) {
     // 左が線を検出 → 左へ
     curveLeft(traceSpeed +2.6);
