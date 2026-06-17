@@ -10,17 +10,10 @@ const int pwm_motor_l = 11;
 const int traceSpeed = 125;   // 基本速度（0-255）
 
 // 追従用のパラメータ
-<<<<<<< HEAD
-int left_foward_trig_pin = 12;    // Trigger
-int left_foward_echo_pin = 13;    // Echo
-int right_foward_trig_pin = 6;    // Trigger
-int right_foward_echo_pin = 7;    // Echo
-=======
 int left_foward_trig_pin = 6;    // Trigger
 int left_foward_echo_pin = 7;    // Echo
 int right_foward_trig_pin = 12;    // Trigger
 int right_foward_echo_pin = 13;    // Echo
->>>>>>> 677ba7e37677fe859518fa7e69407aa2cfc53b1b
 
 long left_duration, right_duration;
 float left_cm, right_cm;
