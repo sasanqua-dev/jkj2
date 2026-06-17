@@ -15,9 +15,9 @@ int left_foward_echo_pin = 7;    // Echo
 int right_foward_trig_pin = 12;    // Trigger
 int right_foward_echo_pin = 13;    // Echo
 
-
 long left_duration, right_duration;
 float left_cm, right_cm;
+int diffLimit = 5;
 
 
 void setup() { // 実行時に1回だけ実行
