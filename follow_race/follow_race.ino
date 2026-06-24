@@ -7,17 +7,21 @@ const int pwm_motor_r = 10; // PWM信号生成可能なピンを選ぶ
 const int motor_l1 = 4;
 const int motor_l2 = 5;
 const int pwm_motor_l = 11;
-const int traceSpeed = 100;   // 基本速度（0-255）
+const int traceSpeed = 105;   // 基本速度（0-255）
 
 // 追従用のパラメータ
 int left_foward_trig_pin = 6;    // Trigger
 int left_foward_echo_pin = 7;    // Echo
-int right_foward_trig_pin = 12;    // Trigger
+int right_foward_trig_pin = 9;    // Trigger
 int right_foward_echo_pin = 13;    // Echo
+const int obstacle_pin = 8;  // 障害物センサ OUT
 
 long left_duration, right_duration;
 float left_cm, right_cm;
+float prev_left_cm = 20;
+float prev_right_cm = 20;
 int diffLimit = 5;
+
 
 
 void setup() { // 実行時に1回だけ実行
@@ -31,6 +35,7 @@ void setup() { // 実行時に1回だけ実行
   pinMode(right_foward_echo_pin, INPUT);
   pinMode(left_foward_trig_pin, OUTPUT);
   pinMode(left_foward_echo_pin, INPUT);
+  pinMode(obstacle_pin, INPUT);
   Serial.begin(9600);
 }
 
@@ -44,11 +49,11 @@ void stopMotor() { // モータを停止させる関数
 }
 
 void forward(int speedBase = 200) { // 前進させる関数
-  digitalWrite(motor_l1, LOW);
-  digitalWrite(motor_l2, HIGH);
+  digitalWrite(motor_l1, HIGH);
+  digitalWrite(motor_l2, LOW);
   analogWrite(pwm_motor_l, speedBase + 10);
-  digitalWrite(motor_r1, HIGH);
-  digitalWrite(motor_r2, LOW);
+  digitalWrite(motor_r1, LOW);
+  digitalWrite(motor_r2, HIGH);
   analogWrite(pwm_motor_r, speedBase);
   delay(5);
 }
@@ -82,26 +87,26 @@ void turnRight(int speedBase = 150) { // 右に曲がる関数
 // ライントレース用：両輪とも前進させつつ左右の速度差で緩やかに曲がる
 // diff が大きいほど曲がりが鋭くなる
 void curveLeft(int speedBase = 180, int diff = 0) { // 左方向へ緩やかに曲がる
-  int l = speedBase - 20;
+  int l = 0;
   int r = speedBase + diff;
   if (l < 0) l = 0;
   if (r > 255) r = 255;
   digitalWrite(motor_l1, HIGH);
   digitalWrite(motor_l2, LOW);
   analogWrite(pwm_motor_l, l);
-  digitalWrite(motor_r1, HIGH);
-  digitalWrite(motor_r2, LOW);
+  digitalWrite(motor_r1, LOW);
+  digitalWrite(motor_r2, HIGH);
   analogWrite(pwm_motor_r, r);
   delay(1);
 }
 
 void curveRight(int speedBase = 180, int diff = 0) { // 右方向へ緩やかに曲がる
   int l = speedBase + diff;
-  int r = speedBase - 20;
+  int r = 0;
   if (l > 255) l = 255;
   if (r < 0) r = 0;
-  digitalWrite(motor_l1, LOW);
-  digitalWrite(motor_l2, HIGH);
+  digitalWrite(motor_l1, HIGH);
+  digitalWrite(motor_l2, LOW);
   analogWrite(pwm_motor_l, l);
   digitalWrite(motor_r1, LOW);
   digitalWrite(motor_r2, HIGH);
@@ -110,6 +115,15 @@ void curveRight(int speedBase = 180, int diff = 0) { // 右方向へ緩やかに
 }
 
 void loop() {
+  bool obstacle = (digitalRead(obstacle_pin) == LOW); 
+// センサによって LOWで検知 / HIGHで検知 が逆の場合あり
+
+if (obstacle) {
+  stopMotor();
+  Serial.println("Obstacle detected");
+  delay(100);
+  return;
+}
   // ----------------------------------------------------
   // 1. 左側のセンサー測定
   // ----------------------------------------------------
@@ -144,7 +158,7 @@ void loop() {
   Serial.print("cm");
   Serial.println();
   
-  delay(30);
+  delay(10);
 
   bool on_l = (left_cm >= 5 && left_cm <= 30);
   bool on_r = (right_cm >= 5 && right_cm <= 30);
@@ -152,20 +166,16 @@ void loop() {
   bool right = (right_cm + diffLimit < left_cm);
   if (left_cm == 0 && right_cm == 0){
     
-  } else if (left_cm <= 10 && right_cm <= 10) {
-    // 両方白 → 近すぎる→減速
-    forward(traceSpeed - 30);
-    //delay(1000);
   } else if(left_cm >=30 && right_cm >= 30){
     //離れすぎている→加速
     forward(traceSpeed + 30);
   } else if (left_cm + diffLimit < right_cm) {
     // 左が線を検出 → 左へ
-    curveRight(traceSpeed + 15);
+    curveLeft(traceSpeed - 10 );
     //delay(1000);
   } else if (right_cm + diffLimit < left_cm) {
     // 右が線を検出 → 右へ
-    curveLeft(traceSpeed );
+    curveRight(traceSpeed - 10 );
     //delay(1000);
   } else{
     // 両方黒（交差点・太線）→ 直進
