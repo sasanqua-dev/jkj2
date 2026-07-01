@@ -36,12 +36,14 @@ const int LOSE_CONFIRM = 3; // 「両方見失った」が何回連続したら�
 const int HIST_SIZE = 10;
 const float OUTLIER_K = 2.0;     // 何σ以上ずれたら外れ値とみなすか
 const float MIN_STDDEV = 2.0;    // 測定値が安定している時に誤検知しないための下限値(cm)
+const int REJECT_RESET = 3;      // 何回連続で外れ値判定されたらフィルタをリセットするか
 
 struct OutlierFilter {
   float history[HIST_SIZE];
   int count = 0;
   int idx = 0;
   float lastAccepted = 20;
+  int rejectStreak = 0;
 
   float filter(float newValue) {
     if (newValue <= 0) {
@@ -71,10 +73,21 @@ struct OutlierFilter {
     if (stddev < MIN_STDDEV) stddev = MIN_STDDEV;
 
     if (fabs(newValue - mean) > OUTLIER_K * stddev) {
-      // 外れ値とみなして採用せず、直前の採用値を維持
+      // 外れ値とみなして採用せず、直前の採用値を維持。
+      // ただし連続で外れ値判定される場合はノイズではなく実際の変化とみなし、
+      // 履歴を新しい値でリセットして復帰できるようにする
+      rejectStreak++;
+      if (rejectStreak >= REJECT_RESET) {
+        for (int i = 0; i < HIST_SIZE; i++) history[i] = newValue;
+        idx = 0;
+        rejectStreak = 0;
+        lastAccepted = newValue;
+        return newValue;
+      }
       return lastAccepted;
     }
 
+    rejectStreak = 0;
     history[idx] = newValue;
     idx = (idx + 1) % HIST_SIZE;
     lastAccepted = newValue;
@@ -89,9 +102,9 @@ OutlierFilter rightFilter;
 // 追従距離を一定に保つための速度自動調整
 // 目標距離より遠ければ加速、近ければ減速する比例制御
 // ----------------------------------------------------
-const float targetDistance = 15.0;     // 保ちたい追従距離(cm)
+const float targetDistance = 7.0;      // 保ちたい追従距離(cm)
 const float speedKp = 2.0;             // 距離誤差(cm)あたりの速度補正量
-const int minTraceSpeed = 70;          // これ以上は遅くしない
+const int minTraceSpeed = 90;          // これ以上は遅くしない
 const int maxTraceSpeed = 200;         // これ以上は速くしない
 const float maxSensorDistance = 100.0; // センサが未検出(0)の時に「遠い」とみなす距離
 
@@ -233,21 +246,25 @@ if (obstacle) {
   right_cm = (right_duration / 2.0) / 29.1;
 
   // 過去10回分の測定履歴から外れ値を除外
-  left_cm = leftFilter.filter(left_cm);
-  right_cm = rightFilter.filter(right_cm);
+  
 
   Serial.print("Left: ");
   Serial.print(left_cm);
   Serial.print("cm, Right: ");
   Serial.print(right_cm);
   Serial.print("cm");
-  Serial.println();
+
+  left_cm = leftFilter.filter(left_cm);
+  right_cm = rightFilter.filter(right_cm);
   
   delay(10);
 
   // 左右センサの平均距離をもとに、目標距離を保つ速度を計算
   float frontDistance = (left_cm + right_cm) / 2.0;
   int adaptiveSpeed = computeTraceSpeed(frontDistance);
+  Serial.print(", Speed: ");
+  Serial.print(adaptiveSpeed);
+  Serial.println();
 
   if (left_cm == 0 && right_cm == 0){
     // センサ未検出（初期状態など）→ 何もしない
