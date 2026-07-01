@@ -18,9 +18,81 @@ const int obstacle_pin = 8;  // 障害物センサ OUT
 
 long left_duration, right_duration;
 float left_cm, right_cm;
-float prev_left_cm = 20;
-float prev_right_cm = 20;
 int diffLimit = 5;
+
+// ----------------------------------------------------
+// 外れ値フィルタ：直近10回の測定値から平均・標準偏差を求め、
+// 大きく外れた値（ノイズ由来と思われる値）は採用せず直前の採用値を使う
+// ----------------------------------------------------
+const int HIST_SIZE = 10;
+const float OUTLIER_K = 2.0;     // 何σ以上ずれたら外れ値とみなすか
+const float MIN_STDDEV = 2.0;    // 測定値が安定している時に誤検知しないための下限値(cm)
+
+struct OutlierFilter {
+  float history[HIST_SIZE];
+  int count = 0;
+  int idx = 0;
+  float lastAccepted = 20;
+
+  float filter(float newValue) {
+    if (newValue <= 0) {
+      // 超音波センサのタイムアウト（未検出）は無効値として履歴に入れない
+      return lastAccepted;
+    }
+
+    if (count < HIST_SIZE) {
+      // 履歴が十分に溜まるまではそのまま採用
+      history[idx] = newValue;
+      idx = (idx + 1) % HIST_SIZE;
+      count++;
+      lastAccepted = newValue;
+      return newValue;
+    }
+
+    float sum = 0;
+    for (int i = 0; i < HIST_SIZE; i++) sum += history[i];
+    float mean = sum / HIST_SIZE;
+
+    float varSum = 0;
+    for (int i = 0; i < HIST_SIZE; i++) {
+      float d = history[i] - mean;
+      varSum += d * d;
+    }
+    float stddev = sqrt(varSum / HIST_SIZE);
+    if (stddev < MIN_STDDEV) stddev = MIN_STDDEV;
+
+    if (fabs(newValue - mean) > OUTLIER_K * stddev) {
+      // 外れ値とみなして採用せず、直前の採用値を維持
+      return lastAccepted;
+    }
+
+    history[idx] = newValue;
+    idx = (idx + 1) % HIST_SIZE;
+    lastAccepted = newValue;
+    return newValue;
+  }
+};
+
+OutlierFilter leftFilter;
+OutlierFilter rightFilter;
+
+// ----------------------------------------------------
+// 追従距離を一定に保つための速度自動調整
+// 目標距離より遠ければ加速、近ければ減速する比例制御
+// ----------------------------------------------------
+const float targetDistance = 15.0;     // 保ちたい追従距離(cm)
+const float speedKp = 4.0;             // 距離誤差(cm)あたりの速度補正量
+const int minTraceSpeed = 70;          // これ以上は遅くしない
+const int maxTraceSpeed = 200;         // これ以上は速くしない
+const float maxSensorDistance = 100.0; // センサが未検出(0)の時に「遠い」とみなす距離
+
+int computeTraceSpeed(float distance) {
+  if (distance <= 0) distance = maxSensorDistance; // 未検出は遠いとみなして加速させる
+  float speed = traceSpeed + speedKp * (distance - targetDistance);
+  if (speed < minTraceSpeed) speed = minTraceSpeed;
+  if (speed > maxTraceSpeed) speed = maxTraceSpeed;
+  return (int)speed;
+}
 
 
 
@@ -151,6 +223,10 @@ if (obstacle) {
   right_duration = pulseIn(right_foward_echo_pin, HIGH, 20000); // タイムアウトを20msに設定
   right_cm = (right_duration / 2.0) / 29.1;
 
+  // 過去10回分の測定履歴から外れ値を除外
+  left_cm = leftFilter.filter(left_cm);
+  right_cm = rightFilter.filter(right_cm);
+
   Serial.print("Left: ");
   Serial.print(left_cm);
   Serial.print("cm, Right: ");
@@ -164,22 +240,27 @@ if (obstacle) {
   bool on_r = (right_cm >= 5 && right_cm <= 30);
   bool left = (left_cm + diffLimit < right_cm);
   bool right = (right_cm + diffLimit < left_cm);
+
+  // 左右センサの平均距離をもとに、目標距離を保つ速度を計算
+  float frontDistance = (left_cm + right_cm) / 2.0;
+  int adaptiveSpeed = computeTraceSpeed(frontDistance);
+
   if (left_cm == 0 && right_cm == 0){
-    
+
   } else if(left_cm >=30 && right_cm >= 30){
-    //離れすぎている→加速
-    forward(traceSpeed + 30);
+    //離れすぎている→加速（adaptiveSpeedが既に距離に応じて高くなる）
+    forward(adaptiveSpeed);
   } else if (left_cm + diffLimit < right_cm) {
     // 左が線を検出 → 左へ
-    curveLeft(traceSpeed - 10 );
+    curveLeft(adaptiveSpeed - 10 );
     //delay(1000);
   } else if (right_cm + diffLimit < left_cm) {
     // 右が線を検出 → 右へ
-    curveRight(traceSpeed - 10 );
+    curveRight(adaptiveSpeed - 10 );
     //delay(1000);
   } else{
     // 両方黒（交差点・太線）→ 直進
-    forward(traceSpeed);
+    forward(adaptiveSpeed);
     //delay(1000);
   }
 }
