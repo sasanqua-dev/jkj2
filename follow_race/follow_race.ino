@@ -7,17 +7,20 @@ const int pwm_motor_r = 10; // PWM信号生成可能なピンを選ぶ
 const int motor_l1 = 4;
 const int motor_l2 = 5;
 const int pwm_motor_l = 11;
-const int traceSpeed = 105;   // 基本速度（0-255）
+const int traceSpeed = 110;   // 基本速度（0-255）
 
 // 追従用のパラメータ
 int left_foward_trig_pin = 6;    // Trigger
 int left_foward_echo_pin = 7;    // Echo
 int right_foward_trig_pin = 9;    // Trigger
 int right_foward_echo_pin = 13;    // Echo
+int center_trig_pin = A0;
+int center_echo_pin = A1;
+
 const int obstacle_pin = 8;  // 障害物センサ OUT
 
-long left_duration, right_duration;
-float left_cm, right_cm;
+long left_duration, right_duration, center_duration;
+float left_cm, right_cm, center_cm;
 int diffLimit = 5;
 
 // ----------------------------------------------------
@@ -97,6 +100,7 @@ struct OutlierFilter {
 
 OutlierFilter leftFilter;
 OutlierFilter rightFilter;
+OutlierFilter centerFilter;
 
 // ----------------------------------------------------
 // 追従距離を一定に保つための速度自動調整
@@ -129,6 +133,8 @@ void setup() { // 実行時に1回だけ実行
   pinMode(right_foward_echo_pin, INPUT);
   pinMode(left_foward_trig_pin, OUTPUT);
   pinMode(left_foward_echo_pin, INPUT);
+  pinMode(center_trig_pin, OUTPUT);
+  pinMode(center_echo_pin, INPUT);
   pinMode(obstacle_pin, INPUT);
   Serial.begin(9600);
 }
@@ -199,7 +205,7 @@ void curveRight(int speedBase = 180, int diff = 0) { // 右方向へ緩やかに
   int r = 0;
   if (l > 255) l = 255;
   if (r < 0) r = 0;
-  digitalWrite(motor_l1, HIGH);
+  digitalWrite(motor_l1, LOW);
   digitalWrite(motor_l2, LOW);
   analogWrite(pwm_motor_l, l);
   digitalWrite(motor_r1, LOW);
@@ -234,7 +240,21 @@ if (obstacle) {
   delay(30);
 
   // ----------------------------------------------------
-  // 2. 右側のセンサー測定
+  // 2. 真ん中のセンサー測定
+  // ----------------------------------------------------
+  digitalWrite(center_trig_pin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(center_trig_pin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(center_trig_pin, LOW);
+
+  center_duration = pulseIn(center_echo_pin, HIGH, 20000);
+  center_cm = (center_duration / 2.0) / 29.1;
+
+  delay(30);
+
+  // ----------------------------------------------------
+  // 3. 右側のセンサー測定
   // ----------------------------------------------------
   digitalWrite(right_foward_trig_pin, LOW);
   delayMicroseconds(2);
@@ -250,56 +270,43 @@ if (obstacle) {
 
   Serial.print("Left: ");
   Serial.print(left_cm);
+  Serial.print("Center: ");
+  Serial.print(center_cm);
   Serial.print("cm, Right: ");
   Serial.print(right_cm);
   Serial.print("cm");
 
-  left_cm = leftFilter.filter(left_cm);
-  right_cm = rightFilter.filter(right_cm);
+
   
   delay(10);
 
   // 左右センサの平均距離をもとに、目標距離を保つ速度を計算
-  float frontDistance = (left_cm + right_cm) / 2.0;
+  float frontDistance = center_cm;
   int adaptiveSpeed = computeTraceSpeed(frontDistance);
   Serial.print(", Speed: ");
   Serial.print(adaptiveSpeed);
   Serial.println();
 
-  if (left_cm == 0 && right_cm == 0){
-    // センサ未検出（初期状態など）→ 何もしない
-
-  } else {
-    // 片側だけが遠い（左右差がdiffLimit以上）→ カーブ方向を最優先・即座に判定
-    DriveMode desiredMode;
-    if (left_cm + diffLimit < right_cm) {
-      desiredMode = TURN_LEFT;   // 右が遠い→左へカーブ
-    } else if (right_cm + diffLimit < left_cm) {
-      desiredMode = TURN_RIGHT;  // 左が遠い→右へカーブ
-    } else {
-      desiredMode = STRAIGHT;    // 左右差なし（両方遠い or 両方近い）
-    }
-
-    if (desiredMode != STRAIGHT || currentMode == STRAIGHT) {
-      // 明確なカーブ判定、または元々直進中 → そのまま反映
-      currentMode = desiredMode;
-      loseCount = 0;
-    } else {
-      // 旋回中に左右差が一瞬消えても、すぐには直進に戻さず
-      // LOSE_CONFIRM回連続で確認できてから直進に切り替える（曲がりきる前に離脱するのを防ぐ）
-      loseCount++;
-      if (loseCount >= LOSE_CONFIRM) {
-        currentMode = STRAIGHT;
-        loseCount = 0;
-      }
-    }
-
-    if (currentMode == TURN_LEFT) {
-      curveLeft(adaptiveSpeed - 10);
-    } else if (currentMode == TURN_RIGHT) {
-      curveRight(adaptiveSpeed - 10);
-    } else {
-      forward(adaptiveSpeed);
-    }
+  bool center_detect = (center_cm >= 5 && center_cm <= 30);
+  bool left_detect   = (left_cm >= 1 && left_cm <= 20);
+  bool right_detect  = (right_cm >= 1 && right_cm <= 20);
+  if (center_cm < 5 && !right_detect && !left_detect){
+    stopMotor();
+  }
+  else if (left_detect ) { //&& !center_detect && !right_detect
+    Serial.println("LEFT");
+    curveLeft(traceSpeed + 10);
+  }
+  else if (right_detect ) { //&& !center_detect && !left_detect
+    Serial.println("RIGHT");
+    curveRight(traceSpeed + 10);
+  }
+  else if (center_detect) {
+    Serial.println("CENTER");
+    forward(traceSpeed);
+  }
+  else {
+    Serial.println("LOST");
+    forward(traceSpeed);
   }
 }
