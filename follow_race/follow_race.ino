@@ -21,6 +21,15 @@ float left_cm, right_cm;
 int diffLimit = 5;
 
 // ----------------------------------------------------
+// カーブ中の一時的なセンサロストで直進に戻ってしまい
+// 曲がりきれなくなるのを防ぐためのヒステリシス
+// ----------------------------------------------------
+enum DriveMode { STRAIGHT, TURN_LEFT, TURN_RIGHT };
+DriveMode currentMode = STRAIGHT;
+int loseCount = 0;
+const int LOSE_CONFIRM = 3; // 「両方見失った」が何回連続したら直進に切り替えるか
+
+// ----------------------------------------------------
 // 外れ値フィルタ：直近10回の測定値から平均・標準偏差を求め、
 // 大きく外れた値（ノイズ由来と思われる値）は採用せず直前の採用値を使う
 // ----------------------------------------------------
@@ -81,7 +90,7 @@ OutlierFilter rightFilter;
 // 目標距離より遠ければ加速、近ければ減速する比例制御
 // ----------------------------------------------------
 const float targetDistance = 15.0;     // 保ちたい追従距離(cm)
-const float speedKp = 4.0;             // 距離誤差(cm)あたりの速度補正量
+const float speedKp = 2.0;             // 距離誤差(cm)あたりの速度補正量
 const int minTraceSpeed = 70;          // これ以上は遅くしない
 const int maxTraceSpeed = 200;         // これ以上は速くしない
 const float maxSensorDistance = 100.0; // センサが未検出(0)の時に「遠い」とみなす距離
@@ -236,31 +245,44 @@ if (obstacle) {
   
   delay(10);
 
-  bool on_l = (left_cm >= 5 && left_cm <= 30);
-  bool on_r = (right_cm >= 5 && right_cm <= 30);
-  bool left = (left_cm + diffLimit < right_cm);
-  bool right = (right_cm + diffLimit < left_cm);
-
   // 左右センサの平均距離をもとに、目標距離を保つ速度を計算
   float frontDistance = (left_cm + right_cm) / 2.0;
   int adaptiveSpeed = computeTraceSpeed(frontDistance);
 
   if (left_cm == 0 && right_cm == 0){
+    // センサ未検出（初期状態など）→ 何もしない
 
-  } else if(left_cm >=30 && right_cm >= 30){
-    //離れすぎている→加速（adaptiveSpeedが既に距離に応じて高くなる）
-    forward(adaptiveSpeed);
-  } else if (left_cm + diffLimit < right_cm) {
-    // 左が線を検出 → 左へ
-    curveLeft(adaptiveSpeed - 10 );
-    //delay(1000);
-  } else if (right_cm + diffLimit < left_cm) {
-    // 右が線を検出 → 右へ
-    curveRight(adaptiveSpeed - 10 );
-    //delay(1000);
-  } else{
-    // 両方黒（交差点・太線）→ 直進
-    forward(adaptiveSpeed);
-    //delay(1000);
+  } else {
+    // 片側だけが遠い（左右差がdiffLimit以上）→ カーブ方向を最優先・即座に判定
+    DriveMode desiredMode;
+    if (left_cm + diffLimit < right_cm) {
+      desiredMode = TURN_LEFT;   // 右が遠い→左へカーブ
+    } else if (right_cm + diffLimit < left_cm) {
+      desiredMode = TURN_RIGHT;  // 左が遠い→右へカーブ
+    } else {
+      desiredMode = STRAIGHT;    // 左右差なし（両方遠い or 両方近い）
+    }
+
+    if (desiredMode != STRAIGHT || currentMode == STRAIGHT) {
+      // 明確なカーブ判定、または元々直進中 → そのまま反映
+      currentMode = desiredMode;
+      loseCount = 0;
+    } else {
+      // 旋回中に左右差が一瞬消えても、すぐには直進に戻さず
+      // LOSE_CONFIRM回連続で確認できてから直進に切り替える（曲がりきる前に離脱するのを防ぐ）
+      loseCount++;
+      if (loseCount >= LOSE_CONFIRM) {
+        currentMode = STRAIGHT;
+        loseCount = 0;
+      }
+    }
+
+    if (currentMode == TURN_LEFT) {
+      curveLeft(adaptiveSpeed - 10);
+    } else if (currentMode == TURN_RIGHT) {
+      curveRight(adaptiveSpeed - 10);
+    } else {
+      forward(adaptiveSpeed);
+    }
   }
 }
