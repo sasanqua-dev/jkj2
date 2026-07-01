@@ -80,9 +80,9 @@ OutlierFilter rightFilter;
 // 追従距離を一定に保つための速度自動調整
 // 目標距離より遠ければ加速、近ければ減速する比例制御
 // ----------------------------------------------------
-const float targetDistance = 15.0;     // 保ちたい追従距離(cm)
-const float speedKp = 4.0;             // 距離誤差(cm)あたりの速度補正量
-const int minTraceSpeed = 70;          // これ以上は遅くしない
+const float targetDistance = 7.0;     // 保ちたい追従距離(cm)
+const float speedKp = 2.0;             // 距離誤差(cm)あたりの速度補正量
+const int minTraceSpeed = 90;          // これ以上は遅くしない
 const int maxTraceSpeed = 200;         // これ以上は速くしない
 const float maxSensorDistance = 100.0; // センサが未検出(0)の時に「遠い」とみなす距離
 
@@ -224,15 +224,16 @@ if (obstacle) {
   right_cm = (right_duration / 2.0) / 29.1;
 
   // 過去10回分の測定履歴から外れ値を除外
-  left_cm = leftFilter.filter(left_cm);
-  right_cm = rightFilter.filter(right_cm);
+  
 
   Serial.print("Left: ");
   Serial.print(left_cm);
   Serial.print("cm, Right: ");
   Serial.print(right_cm);
   Serial.print("cm");
-  Serial.println();
+
+  left_cm = leftFilter.filter(left_cm);
+  right_cm = rightFilter.filter(right_cm);
   
   delay(10);
 
@@ -244,6 +245,9 @@ if (obstacle) {
   // 左右センサの平均距離をもとに、目標距離を保つ速度を計算
   float frontDistance = (left_cm + right_cm) / 2.0;
   int adaptiveSpeed = computeTraceSpeed(frontDistance);
+  Serial.print(", Speed: ");
+  Serial.print(adaptiveSpeed);
+  Serial.println();
 
   if (left_cm == 0 && right_cm == 0){
 
