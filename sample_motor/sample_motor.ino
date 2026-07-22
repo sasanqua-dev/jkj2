@@ -1,3 +1,4 @@
+//追従大会ライントレース車
 //ライントレース一周 time34.60
 // Arduino Uno のピン配置
 // モータ
@@ -18,9 +19,9 @@ int val_r = 0;
 
 // ライントレース用のパラメータ
 // 黒い線の上では反射が少なく analogRead の値が大きくなる想定
-// 実機に合わせて threshold を調整する                
-const int threshold = 750;    // 白／黒を判定するしきい値
-const int traceSpeed = 100;   // ライントレース中の基本速度（0-255）
+// 実機に合わせて threshold を調整する
+const int threshold = 600;    // 白／黒を判定するしきい値
+const int traceSpeed = 75;   // ライントレース中の基本速度（0-255）
 bool curving = false;
 
 void setup() { // 実行時に1回だけ実行
@@ -48,34 +49,35 @@ void forward(int speedBase = 200) { // 前進させる関数
   analogWrite(pwm_motor_l, speedBase);
   digitalWrite(motor_r1, HIGH);
   digitalWrite(motor_r2, LOW);
-  analogWrite(pwm_motor_r, speedBase);
-  delay(5);
+  analogWrite(pwm_motor_r, speedBase * 1.5);
 }
 
 void backward(int speedBase = 200) { // 後退させる関数
   digitalWrite(motor_l1, LOW);
   digitalWrite(motor_l2, HIGH);
+  analogWrite(pwm_motor_l, speedBase);
+  digitalWrite(motor_r1, LOW);
+  digitalWrite(motor_r2, HIGH);
   analogWrite(pwm_motor_r, speedBase);
   delay(20);
 }
 
 void turnLeft(int speedBase = 150) { // 左に曲がる関数
-  digitalWrite(motor_l1, HIGH);
-  digitalWrite(motor_l2, LOW);
-  analogWrite(pwm_motor_l, speedBase + 50);
-  digitalWrite(motor_r1, LOW);
-  digitalWrite(motor_r2, HIGH);
-  analogWrite(pwm_motor_r, speedBase - 10);
-  
+  digitalWrite(motor_l1, LOW);
+  digitalWrite(motor_l2, HIGH);
+  analogWrite(pwm_motor_l, speedBase + 25);
+  digitalWrite(motor_r1, HIGH);
+  digitalWrite(motor_r2, LOW);
+  analogWrite(pwm_motor_r, speedBase);
 }
 
 void turnRight(int speedBase = 150) { // 右に曲がる関数
-  digitalWrite(motor_l1, LOW);
-  digitalWrite(motor_l2, HIGH);
-  analogWrite(pwm_motor_l, speedBase - 10);
-  digitalWrite(motor_r1, HIGH);
-  digitalWrite(motor_r2, LOW);
-  analogWrite(pwm_motor_r, speedBase + 50);
+  digitalWrite(motor_l1, HIGH);
+  digitalWrite(motor_l2, LOW);
+  analogWrite(pwm_motor_l, speedBase);
+  digitalWrite(motor_r1, LOW);
+  digitalWrite(motor_r2, HIGH);
+  analogWrite(pwm_motor_r, speedBase + 25);
 }
 
 // ライントレース用：両輪とも前進させつつ左右の速度差で緩やかに曲がる
@@ -91,7 +93,6 @@ void curveLeft(int speedBase = 180, int diff = 30) { // 左方向へ緩やかに
   digitalWrite(motor_r1, LOW);
   digitalWrite(motor_r2, HIGH);
   analogWrite(pwm_motor_r, r);
-  delay(1);
 }
 
 void curveRight(int speedBase = 180, int diff = 30) { // 右方向へ緩やかに曲がる
@@ -105,7 +106,6 @@ void curveRight(int speedBase = 180, int diff = 30) { // 右方向へ緩やか�
   digitalWrite(motor_r1, HIGH);
   digitalWrite(motor_r2, LOW);
   analogWrite(pwm_motor_r, r);
-  delay(1);
 }
 
 void loop() { // 制御プログラム（2センサによるライントレース）
@@ -120,7 +120,7 @@ void loop() { // 制御プログラム（2センサによるライントレー�
 
   // 黒（線上） = val >= threshold, 白（床）= val < threshold
   bool on_l = (val_l >= threshold);
-  bool on_r = (val_r >= threshold);
+  bool on_r = (val_r >= threshold +200);
 
   // 2センサのパターンで分岐（2つのセンサは黒線を挟むように配置する想定）
   //  LR
@@ -132,16 +132,20 @@ void loop() { // 制御プログラム（2センサによるライントレー�
   if (!on_l && !on_r) {
     // 両方白 → 連続時間を計測して、一定時間超えたら線を見失ったと判断
     curving = false;
-    forward(traceSpeed+ 45);
+    forward(traceSpeed);
+    //Serial.println("forward");
   } else if (on_l && !on_r) {
     // 左が線を検出 → 左へ
-    turnRight(traceSpeed );
+    curveLeft(traceSpeed);
+    //Serial.println("curveLeft");
   } else if (!on_l && on_r) {
     // 右が線を検出 → 右へ
-    turnLeft(traceSpeed );
+    curveRight(traceSpeed );
+    //Serial.println("curveRight");
   } else {
     // 両方黒（交差点・太線）→ 直進
     curving = false;
     forward(traceSpeed);
+    //Serial.println("forward");
   }
 }

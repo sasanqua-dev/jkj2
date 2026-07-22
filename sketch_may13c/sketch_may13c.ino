@@ -1,3 +1,4 @@
+//追従大会ライントレース車 成功パターン7/8
 //ライントレース一周 time34.60
 // Arduino Uno のピン配置
 // モータ
@@ -19,8 +20,8 @@ int val_r = 0;
 // ライントレース用のパラメータ
 // 黒い線の上では反射が少なく analogRead の値が大きくなる想定
 // 実機に合わせて threshold を調整する
-const int threshold = 750;    // 白／黒を判定するしきい値
-const int traceSpeed = 80;   // ライントレース中の基本速度（0-255）
+const int threshold = 600;    // 白／黒を判定するしきい値
+const int traceSpeed = 50;   // ライントレース中の基本速度（0-255）
 bool curving = false;
 
 void setup() { // 実行時に1回だけ実行
@@ -131,13 +132,13 @@ void loop() { // 制御プログラム（2センサによるライントレー�
   if (!on_l && !on_r) {
     // 両方白 → 連続時間を計測して、一定時間超えたら線を見失ったと判断
     curving = false;
-    forward(traceSpeed+ 50);
+    forward(traceSpeed);
   } else if (on_l && !on_r) {
     // 左が線を検出 → 左へ
-    curveLeft(traceSpeed +2.6);
+    curveLeft(traceSpeed);
   } else if (!on_l && on_r) {
     // 右が線を検出 → 右へ
-    curveRight(traceSpeed +2.6);
+    curveRight(traceSpeed);
   } else {
     // 両方黒（交差点・太線）→ 直進
     curving = false;

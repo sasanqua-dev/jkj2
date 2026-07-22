@@ -1,3 +1,4 @@
+//なし
 //一周改良版
 #include <Servo.h>// Arduino Uno のピン配置
 // モータ
@@ -168,11 +169,11 @@ void loop() { // 制御プログラム（2センサによるライントレー�
     // 両方白 → 連続時間を計測して、一定時間超えたら線を見失ったと判断
     curving = false;
     whitesensor(true);
-  } else if (on_l && !on_r) {
+  } else if (!on_l && on_r) {
     // 左が線を検出 → 左へ
     curveLeft(traceSpeed -40);
     whitesensor(false);
-  } else if (!on_l && on_r) {
+  } else if (on_l && !on_r) {
     // 右が線を検出 → 右へ
     curveRight(traceSpeed -40);
     whitesensor(false);
